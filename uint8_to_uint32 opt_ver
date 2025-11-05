@@ -1,7 +1,9 @@
 .data
 msg_pass:    .asciz "All tests passed.\n"
 msg_fail:    .asciz "Some tests failed.\n"
-
+debruijn_table:
+    .byte 0, 31, 9, 30, 3, 8, 13, 29, 2, 5, 7, 21, 12, 24, 28, 19
+    .byte 1, 10, 4, 14, 6, 22, 25, 20, 11, 15, 23, 26, 16, 27, 17, 18
 .text
 .global _main
 main:
@@ -26,23 +28,29 @@ fail:
     ecall    
     j end
 clz:
-    addi sp, sp, -4
-    sw ra, 0(sp)
-    li a2, 32 #n=32
-    li a3, 16 #c=16
-    
-clz_loop:
-    srl a1,a0,a3 #x=a0 y=t1
-    beqz a1, clz_not_if_loop
-    sub a2,a2,a3
-    mv a0,a1
-    
-clz_not_if_loop:
-    srli a3,a3,1
-    bnez a3,clz_loop
-    sub a0, a2, a0
-    lw ra, 0(sp)
-    addi sp, sp, 4
+    beqz a0, handle_zero
+    srli t0, a0, 1  # x |= x >> 1;
+    or  a0, a0,t0   
+    srli t0, a0, 2  # x |= x >> 2;
+    or  a0, a0, t0
+    srli t0, a0, 4  # x |= x >> 4;
+    or  a0,a0,t0
+    srli t0,a0,8  # x |= x >> 8;
+    or  a0,a0,t0
+    srli t0,a0,16  # x |= x >> 16;
+    or  a0,a0,t0
+    addi a0,a0,1 # x++;
+
+    li   t0,0x076be629     
+    mul  a0,a0,t0         
+    srli a0,a0,27        
+
+    la  t0,debruijn_table 
+    add a0,t0,a0         
+    lbu a0,0(a0)                                
+    ret                    
+handle_zero:
+    li a0, 32
     ret
 uf8_decoder:
     andi t0,a0,0x0F #mantissa
